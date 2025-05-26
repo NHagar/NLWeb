@@ -384,6 +384,152 @@ def parse_rss_2_0(root: ET.Element, feed_url: Optional[str] = None) -> List[Dict
     
     return result
 
+def parse_rss_2_0_as_news(root: ET.Element, feed_url: Optional[str] = None) -> List[Dict[str, Any]]:
+    """
+    Parse an RSS 2.0 feed into NewsArticle Schema.org format.
+    
+    Args:
+        root: XML root element
+        feed_url: URL of the feed
+        
+    Returns:
+        List of Schema.org formatted NewsArticle items
+    """
+    result = []
+    
+    # Get channel element
+    channel = root.find('channel')
+    if channel is None:
+        print("Warning: No channel element found in RSS feed")
+        return result
+    
+    # Extract publisher (feed) information
+    publisher_name = safe_get_text(channel.find('title'))
+    publisher_description = safe_get_text(channel.find('description'))
+    publisher_url = safe_get_text(channel.find('link'))
+    
+    # Extract image for publisher
+    publisher_logo = None
+    image_elem = channel.find('image')
+    if image_elem is not None:
+        image_url = safe_get_text(image_elem.find('url'))
+        if image_url:
+            publisher_logo = {"@type": "ImageObject", "url": fix_url(image_url)}
+    
+    # Create publisher organization schema
+    publisher = {
+        "@type": "NewsMediaOrganization",  # or "Organization"
+        "name": publisher_name,
+        "description": publisher_description,
+        "url": fix_url(publisher_url) or feed_url or ""
+    }
+    
+    if publisher_logo:
+        publisher["logo"] = publisher_logo
+    
+    # Process each item (article)
+    for item in channel.findall('item'):
+        try:
+            # Basic fields
+            headline = safe_get_text(item.find('title'))
+            pub_date = safe_get_text(item.find('pubDate'))
+            
+            # URL (critical field)
+            url = extract_best_url(item, feed_url)
+            
+            if not url and not headline:
+                # Skip items without any identifiable information
+                continue
+            
+            # Create NewsArticle schema
+            article = {
+                "@type": "NewsArticle",
+                "headline": headline,
+                "datePublished": pub_date,
+                "publisher": publisher
+            }
+            
+            if url:
+                article["url"] = url
+            
+            # Add GUID as identifier if available
+            guid = extract_guid(item)
+            if guid and guid != url:
+                article["identifier"] = guid
+            
+            # Extract author information
+            author_elem = item.find('author')
+            if author_elem is not None and author_elem.text:
+                article["author"] = {
+                    "@type": "Person",
+                    "name": author_elem.text
+                }
+            
+            # Dublin Core creator (alternative author field)
+            for ns_prefix, ns_uri in NAMESPACES.items():
+                if ns_prefix == 'dc':
+                    creator_elem = item.find(f".//{{{ns_uri}}}creator")
+                    if creator_elem is not None and creator_elem.text and "author" not in article:
+                        article["author"] = {
+                            "@type": "Person", 
+                            "name": creator_elem.text
+                        }
+            
+            # Extract category/section
+            category_elem = item.find('category')
+            if category_elem is not None and category_elem.text:
+                article["articleSection"] = category_elem.text
+            
+            # Extract content (full article body if available)
+            for ns_prefix, ns_uri in NAMESPACES.items():
+                if ns_prefix == 'content':
+                    content_elem = item.find(f".//{{{ns_uri}}}encoded")
+                    if content_elem is not None and content_elem.text:
+                        article["articleBody"] = content_elem.text
+                        break
+            
+            # Extract image if available
+            # Check for media:content or enclosure with image
+            for enclosure in item.findall('enclosure'):
+                enclosure_type = enclosure.get('type', '')
+                if enclosure_type.startswith('image/'):
+                    enclosure_url = enclosure.get('url')
+                    if enclosure_url:
+                        article["image"] = {
+                            "@type": "ImageObject",
+                            "url": fix_url(enclosure_url)
+                        }
+                        break
+            
+            # Media RSS images
+            for ns_prefix, ns_uri in NAMESPACES.items():
+                if ns_prefix == 'media':
+                    for media in item.findall(f".//{{{ns_uri}}}content"):
+                        media_type = media.get('type', '')
+                        if media_type.startswith('image/'):
+                            media_url = media.get('url')
+                            if media_url:
+                                article["image"] = {
+                                    "@type": "ImageObject",
+                                    "url": fix_url(media_url)
+                                }
+                                break
+            
+            # Add word count if we have article body
+            if "articleBody" in article:
+                word_count = len(article["articleBody"].split())
+                article["wordCount"] = word_count
+            
+            # Add to result
+            result.append(article)
+            
+        except Exception as e:
+            print(f"Error processing RSS item: {str(e)}")
+            traceback.print_exc()
+    
+    return result
+
+
 def parse_atom(root: ET.Element, feed_url: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Parse an Atom feed into Schema.org format.
