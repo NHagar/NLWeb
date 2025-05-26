@@ -1,4 +1,4 @@
-preferred_provider: azure_openai
+preferred_provider: openai
 
 providers:
   inception:
@@ -51,7 +51,6 @@ providers:
       high: deepseek-coder-33b
       low: deepseek-coder-7b
 
-      
   snowflake:
     api_key_env: SNOWFLAKE_PAT
     api_endpoint_env: SNOWFLAKE_ACCOUNT_URL

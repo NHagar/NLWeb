@@ -1,4 +1,4 @@
-preferred_endpoint: azure_ai_search
+preferred_endpoint: qdrant_local
 
 endpoints:
   azure_ai_search:
@@ -8,7 +8,7 @@ endpoints:
     db_type: azure_ai_search
     name: NLWeb_Crawl
 
-  # Milvus is still under development and not yet supported. 
+  # Milvus is still under development and not yet supported.
   # milvus_1:
   #   database_path: ../milvus/milvus_prod.db
   #   index_name: prod_collection
@@ -22,7 +22,7 @@ endpoints:
     index_name: nlweb_collection
     # Specify the database type
     db_type: qdrant
-    
+
   # Option 2: Remote Qdrant server
   qdrant_url:
     # Connect to a Qdrant server at a specific URL
@@ -39,4 +39,3 @@ endpoints:
     api_endpoint_env: SNOWFLAKE_ACCOUNT_URL
     index_name: SNOWFLAKE_CORTEX_SEARCH_SERVICE
     db_type: snowflake_cortex_search
-
