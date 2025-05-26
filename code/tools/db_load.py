@@ -556,44 +556,57 @@ async def process_csv_file(file_path: str, site: str) -> List[Dict[str, Any]]:
         return documents
 
 
-async def process_rss_feed(file_path: str, site: str) -> List[Dict[str, Any]]:
+async def process_rss_feed(
+    file_path: str, site: str, feed_type_override: Optional[str] = None
+) -> List[Dict[str, Any]]:
     """
     Process an RSS/Atom feed into document objects.
 
     Args:
         file_path: Path to the RSS file or URL
         site: Site identifier
-
+        feed_type_override: Optionally force 'podcast' or 'news'
     Returns:
         List of document objects
     """
     print(f"Processing RSS/Atom feed: {file_path}")
+    if feed_type_override:
+        print(f"Forcing feed type: {feed_type_override}")
 
     try:
         # Convert feed to schema.org format
-        podcast_episodes = rss2schema.feed_to_schema(file_path)
+        # No longer assumes podcast, so renaming variable
+        parsed_items = rss2schema.feed_to_schema(
+            file_path, force_type=feed_type_override
+        )
 
         documents = []
 
-        # Process each episode in the feed
-        for episode in podcast_episodes:
+        # Process each item in the feed
+        for item_data in parsed_items:  # Renamed 'episode' to 'item_data'
             # Extract URL
-            url = episode.get("url")
+            url = item_data.get("url")
 
             # Generate a synthetic URL if needed
-            if not url and "name" in episode:
-                url = f"synthetic:{site}:{episode['name']}"
-                episode["url"] = url
-                print(f"Generated synthetic URL for episode: {episode['name']}")
+            # Check for 'name' (common in PodcastEpisode) or 'headline' (common in NewsArticle)
+            item_identifier_for_url = item_data.get("name") or item_data.get("headline")
+
+            if not url and item_identifier_for_url:
+                url = f"synthetic:{site}:{item_identifier_for_url}"
+                item_data["url"] = url
+                print(f"Generated synthetic URL for item: {item_identifier_for_url}")
             elif not url:
                 # Skip items without any identifiable information
+                print(
+                    f"Skipping item due to missing URL and name/headline: {item_data}"
+                )
                 continue
 
             # Convert to JSON - ensure no newlines in the JSON
-            json_data = json.dumps(episode, ensure_ascii=False).replace("\n", " ")
+            json_data = json.dumps(item_data, ensure_ascii=False).replace("\n", " ")
 
-            # Extract name
-            name = episode.get("name", "Untitled Episode")
+            # Extract name (headline for news, name for podcast, fallback to a generic title)
+            name = item_data.get("name") or item_data.get("headline") or "Untitled Item"
 
             # Create document
             document = {
@@ -606,7 +619,8 @@ async def process_rss_feed(file_path: str, site: str) -> List[Dict[str, Any]]:
 
             documents.append(document)
 
-        print(f"Processed {len(documents)} episodes from RSS/Atom feed")
+        # Log message is now more generic
+        print(f"Processed {len(documents)} items from RSS/Atom feed")
         return documents
     except Exception as e:
         print(f"Error processing RSS/Atom feed: {str(e)}")
