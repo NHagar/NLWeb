@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Article Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Additional custom styles can go here if needed */
+        .news-article-card {
+            /* Tailwind handles most styling, but you can add specifics */
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .news-article-card:hover {
+            transform: translateY(-4px);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen p-4 sm:p-6 md:p-8">
+
+    <header class="mb-8 text-center">
+        <h1 class="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400">Latest News</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-2">Curated articles from GAIN.</p>
+    </header>
+
+    <div id="search-controls" class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md max-w-3xl mx-auto">
+        <div class="flex flex-col sm:flex-row gap-4">
+            <input type="text" id="query-input" placeholder="Search for news (e.g., 'AI advancements')"
+                class="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors">
+            <button id="search-button"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                Search
+            </button>
+        </div>
+    </div>
+
+    <main id="news-results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+    </main>
+
+    <div id="loading-indicator" class="text-center py-10 text-gray-500 dark:text-gray-400" style="display: none;">
+        <svg class="animate-spin h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-2"
+            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+            </path>
+        </svg>
+        Loading news...
+    </div>
+
+    <div id="no-results-message" class="text-center py-10 text-gray-500 dark:text-gray-400" style="display: none;">
+        No articles found matching your criteria.
+    </div>
+
+    <script type="module">
+        // Import the renderer
+        import { NewsArticleRenderer } from './news_renderer.js'; // Adjust path if necessary
+
+        // DOM Elements
+        const resultsContainer = document.getElementById('news-results-container');
+        const queryInput = document.getElementById('query-input');
+        const siteInput = document.getElementById('site-input');
+        const searchButton = document.getElementById('search-button');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const noResultsMessage = document.getElementById('no-results-message');
+
+        // Initialize the renderer
+        const articleRenderer = new NewsArticleRenderer({
+            showAuthor: true // Example: Show author by default
+        });
+
+        /**
+         * Fetches news data from the NLWeb backend.
+         * @param {string} query - The search query.
+         * @param {string} [site='all'] - The site to filter by.
+         * @returns {Promise<Array<object>>} - A promise that resolves to an array of news articles.
+         */
+        async function fetchNews(query, site = 'all') {
+            // Show loading indicator and hide no-results message
+            loadingIndicator.style.display = 'block';
+            noResultsMessage.style.display = 'none';
+            resultsContainer.innerHTML = ''; // Clear previous results
+
+            // Construct the URL for your NLWeb backend
+            const base = window.NLWEB_HOST || window.location.origin;
+            const apiUrl = new URL('/ask', base);
+            apiUrl.searchParams.append('query', query);
+            apiUrl.searchParams.append('site', site || 'all'); // Default to 'all' if site is empty
+            apiUrl.searchParams.append('generate_mode', 'list'); // Assuming 'list' mode returns items
+            apiUrl.searchParams.append('streaming', 'false'); // For simplicity, non-streaming for this example
+
+            try {
+                const response = await fetch(apiUrl.toString());
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error fetching news:', response.status, errorText);
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                const data = await response.json();
+                return data.results || []; // Assuming results are in a 'results' array
+            } catch (error) {
+                console.error('Failed to fetch news:', error);
+                resultsContainer.innerHTML = `<p class="text-red-500 text-center col-span-full">Error loading articles. Please try again later.</p>`;
+                return []; // Return empty array on error
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        /**
+         * Renders the fetched news articles to the page.
+         * @param {Array<object>} articles - An array of news article objects.
+         */
+        function renderNews(articles) {
+            resultsContainer.innerHTML = ''; // Clear previous results or loading messages
+
+            if (!articles || articles.length === 0) {
+                noResultsMessage.style.display = 'block';
+                return;
+            }
+            noResultsMessage.style.display = 'none';
+
+            articles.forEach(article => {
+                // The `item` structure for the renderer expects `schema_object`
+                const itemToRender = { schema_object: article.schema_object || article };
+                try {
+                    const articleElement = articleRenderer.render(itemToRender);
+                    resultsContainer.appendChild(articleElement);
+                } catch (e) {
+                    console.error("Error rendering article:", article, e);
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'p-4 bg-red-100 text-red-700 rounded-md';
+                    errorDiv.textContent = `Error rendering article: ${article.headline || 'Unknown article'}`;
+                    resultsContainer.appendChild(errorDiv);
+                }
+            });
+        }
+
+        /**
+         * Handles the search functionality.
+         */
+        async function handleSearch() {
+            const query = queryInput.value.trim();
+            const site = "GAIN"; // Hardcoded site for this example, can be dynamic if needed
+            if (!query) {
+                // Optionally, display all articles or a default set if query is empty
+                // For now, we'll just clear results or show a message
+                resultsContainer.innerHTML = '';
+                noResultsMessage.textContent = 'Please enter a search term.';
+                noResultsMessage.style.display = 'block';
+                return;
+            }
+            const articles = await fetchNews(query, site);
+            renderNews(articles);
+        }
+
+        // Event Listeners
+        searchButton.addEventListener('click', handleSearch);
+        queryInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                handleSearch();
+            }
+        });
+    </script>
+
+</body>
+
+</html>
