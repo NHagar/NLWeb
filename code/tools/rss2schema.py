@@ -668,12 +668,58 @@ def parse_atom(
     return result
 
 
-def feed_to_schema(feed_path: str) -> List[Dict[str, Any]]:
+def detect_feed_type(root: ET.Element) -> str:
     """
-    Convert an RSS/Atom feed to Schema.org format.
+    Detect if a feed is likely a podcast or news/blog feed.
+
+    Args:
+        root: XML root element
+
+    Returns:
+        'podcast' or 'news'
+    """
+    # Check for iTunes namespace - strong indicator of podcast
+    for elem in root.iter():
+        if elem.tag.startswith("{http://www.itunes.com/dtds/podcast-1.0.dtd}"):
+            return "podcast"
+
+    # Check for audio enclosures in items
+    channel = root.find("channel") if root.tag == "rss" else root
+    if channel is not None:
+        items = (
+            channel.findall("item")
+            if root.tag == "rss"
+            else channel.findall("{http://www.w3.org/2005/Atom}entry")
+        )
+
+        audio_count = 0
+        total_items = len(items)
+
+        for item in items[:5]:  # Check first 5 items
+            # Check for audio enclosures
+            for enclosure in item.findall("enclosure"):
+                enclosure_type = enclosure.get("type", "")
+                if enclosure_type.startswith("audio/"):
+                    audio_count += 1
+                    break
+
+        # If more than half have audio, likely a podcast
+        if total_items > 0 and (audio_count / min(total_items, 5)) > 0.5:
+            return "podcast"
+
+    # Default to news/article format
+    return "news"
+
+
+def feed_to_schema(
+    feed_path: str, force_type: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Convert an RSS/Atom feed to appropriate Schema.org format.
 
     Args:
         feed_path: Path to the feed file
+        force_type: Force feed type ('podcast' or 'news'), or None for auto-detection
 
     Returns:
         List of Schema.org formatted items
@@ -689,22 +735,22 @@ def feed_to_schema(feed_path: str) -> List[Dict[str, Any]]:
         root = tree.getroot()
 
         # Determine feed type
-        if root.tag == "rss":
-            # RSS 2.0
-            return parse_rss_2_0(root, feed_url)
-        elif root.tag.endswith("feed"):
-            # Atom
-            return parse_atom(root, feed_url)
-        elif root.tag == "RDF":
-            # RSS 1.0 (RDF) - not fully supported, use the channel as a fallback
-            channel = root.find("channel")
-            if channel is not None:
-                return parse_rss_2_0(root, feed_url)
+        if force_type:
+            feed_type = force_type
+        else:
+            feed_type = detect_feed_type(root)
 
-        # Unknown format, try to look for channel element anyway
-        channel = root.find("channel")
-        if channel is not None:
-            return parse_rss_2_0(root, feed_url)
+        print(f"Processing feed as: {feed_type}")
+
+        # Route to appropriate parser
+        if feed_type == "podcast":
+            if root.tag == "rss":
+                return parse_rss_2_0(root, feed_url)  # Original podcast parser
+            elif root.tag.endswith("feed"):
+                return parse_atom(root, feed_url)  # Original atom parser
+        else:  # news/article format
+            if root.tag == "rss":
+                return parse_rss_2_0_as_news(root, feed_url)
 
         print(f"Unsupported feed format: {root.tag}")
         return []
