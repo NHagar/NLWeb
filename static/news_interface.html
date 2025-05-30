@@ -223,9 +223,6 @@
                 const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
 
                 let counterText = `Showing ${filteredCount} of ${totalCount} articles`;
-                if (scoredArticles.length > 0) {
-                    counterText += ` • ${scoredArticles.length} with scores (${minScore.toFixed(3)}-${maxScore.toFixed(3)})`;
-                }
 
                 resultsCounter.textContent = counterText;
             }
