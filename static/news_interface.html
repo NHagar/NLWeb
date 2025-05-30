@@ -20,6 +20,57 @@
         .news-article-card:hover {
             transform: translateY(-4px);
         }
+
+        /* Custom slider styles */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-track {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 4px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #3b82f6;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-track {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 4px;
+            border: none;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            background: #3b82f6;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+
+        /* Dark mode slider styles */
+        .dark input[type="range"]::-webkit-slider-track {
+            background: #4b5563;
+        }
+
+        .dark input[type="range"]::-moz-range-track {
+            background: #4b5563;
+        }
     </style>
 </head>
 
@@ -31,13 +82,34 @@
     </header>
 
     <div id="search-controls" class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md max-w-3xl mx-auto">
-        <div class="flex flex-col sm:flex-row gap-4">
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
             <input type="text" id="query-input" placeholder="Search for news (e.g., 'AI advancements')"
                 class="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors">
             <button id="search-button"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                 Search
             </button>
+        </div>
+
+        <!-- Score threshold slider -->
+        <div id="score-controls" class="flex flex-col sm:flex-row items-start sm:items-center gap-4"
+            style="display: none;">
+            <label for="score-threshold" class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                Score threshold:
+            </label>
+            <div class="flex-grow flex items-center gap-3">
+                <span class="text-sm text-gray-500 dark:text-gray-400">0</span>
+                <input type="range" id="score-threshold" min="0" max="1" step="0.01" value="0"
+                    class="flex-grow h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                <span id="max-score-label" class="text-sm text-gray-500 dark:text-gray-400">1</span>
+                <span id="score-value"
+                    class="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded min-w-[3rem] text-center">0.00</span>
+                <button id="reset-filter"
+                    class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+                    Reset
+                </button>
+            </div>
+            <div id="results-counter" class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap"></div>
         </div>
     </div>
 
@@ -70,11 +142,93 @@
         const searchButton = document.getElementById('search-button');
         const loadingIndicator = document.getElementById('loading-indicator');
         const noResultsMessage = document.getElementById('no-results-message');
+        const scoreControls = document.getElementById('score-controls');
+        const scoreThreshold = document.getElementById('score-threshold');
+        const scoreValue = document.getElementById('score-value');
+        const resultsCounter = document.getElementById('results-counter');
+        const maxScoreLabel = document.getElementById('max-score-label');
+        const resetFilterButton = document.getElementById('reset-filter');
+
+        // State variables
+        let allArticles = []; // Store all fetched articles
+        let currentThreshold = 0; // Current score threshold
 
         // Initialize the renderer
+        console.log("--- interface.html: About to instantiate NewsArticleRenderer ---"); // <-- ADD THIS
         const articleRenderer = new NewsArticleRenderer({
             showAuthor: true // Example: Show author by default
         });
+        console.log("--- interface.html: NewsArticleRenderer instantiated ---", articleRenderer); // <-- ADD THIS
+
+
+        // Score threshold slider event handler
+        scoreThreshold.addEventListener('input', (e) => {
+            currentThreshold = parseFloat(e.target.value);
+            scoreValue.textContent = currentThreshold.toFixed(2);
+            renderFilteredNews();
+        });
+
+        // Reset filter button event handler
+        resetFilterButton.addEventListener('click', () => {
+            scoreThreshold.value = '0';
+            currentThreshold = 0;
+            scoreValue.textContent = '0.00';
+            renderFilteredNews();
+        });
+
+        /**
+         * Sorts articles by score in descending order
+         * @param {Array<object>} articles - Array of article objects
+         * @returns {Array<object>} - Sorted array
+         */
+        function sortArticlesByScore(articles) {
+            return articles.sort((a, b) => (b.score || 0) - (a.score || 0));
+        }
+
+        /**
+         * Filters articles based on score threshold
+         * @param {Array<object>} articles - Array of article objects
+         * @returns {Array<object>} - Filtered array
+         */
+        function filterArticlesByScore(articles) {
+            return articles.filter(article => (article.score || 0) >= currentThreshold);
+        }
+
+        /**
+         * Renders filtered and sorted articles
+         */
+        function renderFilteredNews() {
+            if (allArticles.length === 0) return;
+
+            let filteredArticles = filterArticlesByScore(allArticles);
+            filteredArticles = sortArticlesByScore(filteredArticles);
+
+            // Update results counter
+            updateResultsCounter(filteredArticles.length, allArticles.length);
+
+            renderNews(filteredArticles);
+        }
+
+        /**
+         * Updates the results counter display
+         * @param {number} filteredCount - Number of articles after filtering
+         * @param {number} totalCount - Total number of articles
+         */
+        function updateResultsCounter(filteredCount, totalCount) {
+            if (resultsCounter) {
+                const scoredArticles = allArticles.filter(article => article.score !== undefined && article.score !== null);
+                const scores = scoredArticles.map(article => article.score);
+                const minScore = scores.length > 0 ? Math.min(...scores) : 0;
+                const maxScore = scores.length > 0 ? Math.max(...scores) : 0;
+
+                let counterText = `Showing ${filteredCount} of ${totalCount} articles`;
+                if (scoredArticles.length > 0) {
+                    counterText += ` • ${scoredArticles.length} with scores (${minScore.toFixed(3)}-${maxScore.toFixed(3)})`;
+                }
+
+                resultsCounter.textContent = counterText;
+            }
+        }
 
         /**
          * Fetches news data from the NLWeb backend.
@@ -87,6 +241,7 @@
             loadingIndicator.style.display = 'block';
             noResultsMessage.style.display = 'none';
             resultsContainer.innerHTML = ''; // Clear previous results
+            scoreControls.style.display = 'none'; // Hide score controls while loading
 
             // Construct the URL for your NLWeb backend
             const base = window.NLWEB_HOST || window.location.origin;
@@ -104,7 +259,32 @@
                     throw new Error(`Network response was not ok: ${response.statusText}`);
                 }
                 const data = await response.json();
-                return data.results || []; // Assuming results are in a 'results' array
+                const articles = data.results || []; // Assuming results are in a 'results' array
+
+                // Store all articles and show score controls if we have articles
+                allArticles = articles;
+                if (articles.length > 0) {
+                    scoreControls.style.display = 'flex';
+
+                    // Calculate score range and update slider
+                    const scoredArticles = articles.filter(article => article.score !== undefined && article.score !== null);
+                    if (scoredArticles.length > 0) {
+                        const scores = scoredArticles.map(article => article.score);
+                        const maxScore = Math.max(...scores);
+                        const maxValue = Math.max(1, maxScore);
+                        scoreThreshold.max = maxValue;
+                        if (maxScoreLabel) {
+                            maxScoreLabel.textContent = maxValue.toFixed(2);
+                        }
+                    }
+
+                    // Reset threshold and update display
+                    scoreThreshold.value = '0';
+                    currentThreshold = 0;
+                    scoreValue.textContent = '0.00';
+                }
+
+                return articles;
             } catch (error) {
                 console.error('Failed to fetch news:', error);
                 resultsContainer.innerHTML = `<p class="text-red-500 text-center col-span-full">Error loading articles. Please try again later.</p>`;
@@ -129,7 +309,12 @@
 
             articles.forEach(article => {
                 // The `item` structure for the renderer expects `schema_object`
-                const itemToRender = { schema_object: article.schema_object || article };
+                const itemToRender = {
+                    schema_object: article.schema_object || article,
+                    score: article.score // Pass the score to the renderer
+                };
+                console.log("Rendering article:", itemToRender);
+                console.log("Article score:", itemToRender.score); // Log the score for debugging
                 try {
                     const articleElement = articleRenderer.render(itemToRender);
                     resultsContainer.appendChild(articleElement);
@@ -155,10 +340,18 @@
                 resultsContainer.innerHTML = '';
                 noResultsMessage.textContent = 'Please enter a search term.';
                 noResultsMessage.style.display = 'block';
+                scoreControls.style.display = 'none'; // Hide score controls
                 return;
             }
             const articles = await fetchNews(query, site);
-            renderNews(articles);
+            // Sort articles by score and render them
+            if (articles.length > 0) {
+                const sortedArticles = sortArticlesByScore([...articles]);
+                updateResultsCounter(sortedArticles.length, articles.length);
+                renderNews(sortedArticles);
+            } else {
+                renderNews(articles);
+            }
         }
 
         // Event Listeners
