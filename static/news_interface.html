@@ -156,7 +156,8 @@
         // Initialize the renderer
         console.log("--- interface.html: About to instantiate NewsArticleRenderer ---"); // <-- ADD THIS
         const articleRenderer = new NewsArticleRenderer({
-            showAuthor: true // Example: Show author by default
+            showAuthor: true,
+            showPublisher: false
         });
         console.log("--- interface.html: NewsArticleRenderer instantiated ---", articleRenderer); // <-- ADD THIS
 
