@@ -13,7 +13,7 @@ from prompts.prompt_runner import PromptRunner
 # NOTE : RelevanceDetection is turned off as a default, for now.
 # Turn it on by changing the value of the following variable.
 
-RELEVANCE_DETECTION_ENABLED = True
+RELEVANCE_DETECTION_ENABLED = False
 
 
 class RelevanceDetection(PromptRunner):
