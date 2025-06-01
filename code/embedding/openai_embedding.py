@@ -9,19 +9,20 @@ Backwards compatibility is not guaranteed at this time.
 """
 
 import os
-import asyncio
 import threading
 from typing import List, Optional
 
-from openai import AsyncOpenAI
+import tiktoken
 from config.config import CONFIG
+from openai import AsyncOpenAI
+from utils.logging_config_helper import LogLevel, get_configured_logger
 
-from utils.logging_config_helper import get_configured_logger, LogLevel
 logger = get_configured_logger("openai_embedding")
 
 # Add lock for thread-safe client access
 _client_lock = threading.Lock()
 openai_client = None
+
 
 def get_openai_api_key() -> str:
     """
@@ -33,15 +34,16 @@ def get_openai_api_key() -> str:
         api_key = provider_config.api_key
         if api_key:
             return api_key
-    
+
     # Fallback to environment variable
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         error_msg = "OpenAI API key not found in configuration or environment"
         logger.error(error_msg)
         raise ValueError(error_msg)
-    
+
     return api_key
+
 
 def get_async_client() -> AsyncOpenAI:
     """
@@ -54,25 +56,51 @@ def get_async_client() -> AsyncOpenAI:
                 api_key = get_openai_api_key()
                 openai_client = AsyncOpenAI(api_key=api_key)
                 logger.debug("OpenAI client initialized successfully")
-            except Exception as e:
+            except Exception:
                 logger.exception("Failed to initialize OpenAI client")
                 raise
-    
+
     return openai_client
 
+
+def _truncate_text_by_tokens(text: str, model: str, max_tokens: int = 8142) -> str:
+    """
+    Truncate text to fit within the token limit for the given model.
+
+    Args:
+        text: The text to truncate
+        model: The model name to get the appropriate encoding
+        max_tokens: Maximum number of tokens (default: 8192 - 50 = 8142)
+
+    Returns:
+        Truncated text that fits within the token limit
+    """
+    try:
+        encoding = tiktoken.encoding_for_model(model)
+    except KeyError:
+        # Fallback to cl100k_base encoding if model not found
+        encoding = tiktoken.get_encoding("cl100k_base")
+
+    tokens = encoding.encode(text)
+    if len(tokens) <= max_tokens:
+        return text
+
+    # Truncate tokens and decode back to text
+    truncated_tokens = tokens[:max_tokens]
+    return encoding.decode(truncated_tokens)
+
+
 async def get_openai_embeddings(
-    text: str,
-    model: Optional[str] = None,
-    timeout: float = 30.0
+    text: str, model: Optional[str] = None, timeout: float = 30.0
 ) -> List[float]:
     """
     Generate an embedding for a single text using OpenAI API.
-    
+
     Args:
         text: The text to embed
         model: Optional model ID to use, defaults to provider's configured model
         timeout: Maximum time to wait for the embedding response in seconds
-        
+
     Returns:
         List of floats representing the embedding vector
     """
@@ -84,21 +112,18 @@ async def get_openai_embeddings(
         else:
             # Default to a common embedding model
             model = "text-embedding-3-small"
-    
+
     logger.debug(f"Generating OpenAI embedding with model: {model}")
     logger.debug(f"Text length: {len(text)} chars")
-    
+
     client = get_async_client()
 
     try:
         # Clean input text (replace newlines with spaces)
         text = text.replace("\n", " ")
-        
-        response = await client.embeddings.create(
-            input=text,
-            model=model
-        )
-        
+
+        response = await client.embeddings.create(input=text, model=model)
+
         embedding = response.data[0].embedding
         logger.debug(f"OpenAI embedding generated, dimension: {len(embedding)}")
         return embedding
@@ -111,24 +136,23 @@ async def get_openai_embeddings(
                 "model": model,
                 "text_length": len(text),
                 "error_type": type(e).__name__,
-                "error_message": str(e)
-            }
+                "error_message": str(e),
+            },
         )
         raise
 
+
 async def get_openai_batch_embeddings(
-    texts: List[str],
-    model: Optional[str] = None,
-    timeout: float = 60.0
+    texts: List[str], model: Optional[str] = None, timeout: float = 60.0
 ) -> List[List[float]]:
     """
     Generate embeddings for multiple texts using OpenAI API.
-    
+
     Args:
         texts: List of texts to embed
         model: Optional model ID to use, defaults to provider's configured model
         timeout: Maximum time to wait for the batch embedding response in seconds
-        
+
     Returns:
         List of embedding vectors, each a list of floats
     """
@@ -140,24 +164,25 @@ async def get_openai_batch_embeddings(
         else:
             # Default to a common embedding model
             model = "text-embedding-3-small"
-    
+
     logger.debug(f"Generating OpenAI batch embeddings with model: {model}")
     logger.debug(f"Batch size: {len(texts)} texts")
-    
+
     client = get_async_client()
 
     try:
-        # Clean input texts (replace newlines with spaces)
-        cleaned_texts = [text.replace("\n", " ") for text in texts]
-        
-        response = await client.embeddings.create(
-            input=cleaned_texts,
-            model=model
-        )
-        
+        # Clean input texts (replace newlines with spaces) and truncate by tokens
+        cleaned_texts = [
+            _truncate_text_by_tokens(text.replace("\n", " "), model) for text in texts
+        ]
+
+        response = await client.embeddings.create(input=cleaned_texts, model=model)
+
         # Extract embeddings in the same order as input texts
         # Use sorted to ensure correct ordering by index
-        embeddings = [data.embedding for data in sorted(response.data, key=lambda x: x.index)]
+        embeddings = [
+            data.embedding for data in sorted(response.data, key=lambda x: x.index)
+        ]
         logger.debug(f"OpenAI batch embeddings generated, count: {len(embeddings)}")
         return embeddings
     except Exception as e:
@@ -169,7 +194,7 @@ async def get_openai_batch_embeddings(
                 "model": model,
                 "batch_size": len(texts),
                 "error_type": type(e).__name__,
-                "error_message": str(e)
-            }
+                "error_message": str(e),
+            },
         )
         raise

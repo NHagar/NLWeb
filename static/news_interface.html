@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Article Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .news-article-card {
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .news-article-card:hover {
+            transform: translateY(-4px);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-track {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 4px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            background: #3b82f6;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-track {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 4px;
+            border: none;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            background: #3b82f6;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+        }
+
+        .dark input[type="range"]::-webkit-slider-track {
+            background: #4b5563;
+        }
+
+        .dark input[type="range"]::-moz-range-track {
+            background: #4b5563;
+        }
+
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 220px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -110px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        #summary-section,
+        #generated-answer-section {
+            background-color: #e9f5ff;
+            dark: bg-gray-700;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0.5rem;
+            border-left: 4px solid #3b82f6;
+        }
+
+        #summary-section h2,
+        #generated-answer-section h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e40af;
+            dark: text-blue-300;
+            margin-bottom: 0.5rem;
+        }
+
+        #summary-section p,
+        #generated-answer-section p {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #374151;
+            dark: text-gray-300;
+        }
+
+        #conversation-history-section {
+            display: none;
+            margin-bottom: 1.5rem;
+        }
+
+        #conversation-history-section h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #1e40af;
+            dark: text-blue-300;
+            margin-bottom: 0.75rem;
+        }
+
+        #conversation-history-list {
+            background-color: #f9fafb;
+            dark: bg-gray-800;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            dark: border-gray-700;
+        }
+
+        #conversation-history-list div {
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+
+        #conversation-history-list div:hover {
+            background-color: #e1f5fe;
+            dark: bg-gray-700;
+        }
+
+        #no-results-message.irrelevant-query {
+            color: #ef4444;
+            /* Red color for warning */
+            dark: text-red-400;
+            border-left: 4px solid #ef4444;
+            padding-left: 1rem;
+            background-color: #fee2e2;
+            /* Light red background */
+            dark: bg-red-900;
+            /* Darker red for dark mode */
+            border-radius: 0.25rem;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white min-h-screen p-4 sm:p-6 md:p-8">
+
+    <header class="mb-8 text-center">
+        <h1 class="text-3xl sm:text-4xl font-bold text-blue-600 dark:text-blue-400">Latest News</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-2">Curated articles from GAIN.</p>
+    </header>
+
+    <div id="search-controls" class="mb-8 p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md max-w-3xl mx-auto">
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+            <input type="text" id="query-input" placeholder="Search for news (e.g., 'AI advancements')"
+                class="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white transition-colors">
+            <button id="search-button"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+                Search
+            </button>
+            <button id="new-thread-button"
+                class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+                title="Start a new conversation, clearing history.">
+                New Thread
+            </button>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Content Mode:</label>
+            <div class="flex flex-wrap gap-x-6 gap-y-2">
+                <div class="tooltip">
+                    <label class="inline-flex items-center">
+                        <input type="radio" class="form-radio text-blue-600 dark:bg-gray-700 dark:border-gray-600"
+                            name="generateMode" value="list" checked>
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">List Results</span>
+                    </label>
+                    <span class="tooltiptext">Show a ranked list of relevant articles.</span>
+                </div>
+                <div class="tooltip">
+                    <label class="inline-flex items-center">
+                        <input type="radio" class="form-radio text-blue-600 dark:bg-gray-700 dark:border-gray-600"
+                            name="generateMode" value="summarize">
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">Summarize</span>
+                    </label>
+                    <span class="tooltiptext">Provide a summary of the top articles along with the list.</span>
+                </div>
+                <div class="tooltip">
+                    <label class="inline-flex items-center">
+                        <input type="radio" class="form-radio text-blue-600 dark:bg-gray-700 dark:border-gray-600"
+                            name="generateMode" value="generate">
+                        <span class="ml-2 text-gray-700 dark:text-gray-300">Generate Answer</span>
+                    </label>
+                    <span class="tooltiptext">Generate a direct answer to your query using relevant articles as
+                        context.</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="score-controls" class="flex flex-col sm:flex-row items-start sm:items-center gap-4"
+            style="display: none;">
+            <label for="score-threshold"
+                class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Score threshold:</label>
+            <div class="flex-grow flex items-center gap-3">
+                <span class="text-sm text-gray-500 dark:text-gray-400">0</span>
+                <input type="range" id="score-threshold" min="0" max="1" step="0.01" value="0"
+                    class="flex-grow h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                <span id="max-score-label" class="text-sm text-gray-500 dark:text-gray-400">1</span>
+                <span id="score-value"
+                    class="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded min-w-[3rem] text-center">0.00</span>
+                <button id="reset-filter"
+                    class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Reset</button>
+            </div>
+            <div id="results-counter" class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap"></div>
+        </div>
+    </div>
+
+    <div id="conversation-history-section" class="max-w-3xl mx-auto mb-6" style="display: none;">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+                    </path>
+                </svg>
+                Conversation History
+            </h3>
+            <div id="conversation-history-list" class="space-y-2"></div>
+        </div>
+    </div>
+
+    <div id="summary-section" class="max-w-3xl mx-auto" style="display: none;">
+        <h2>Summary</h2>
+        <p id="summary-content"></p>
+    </div>
+    <div id="generated-answer-section" class="max-w-3xl mx-auto" style="display: none;">
+        <h2>Generated Answer</h2>
+        <p id="generated-answer-content"></p>
+    </div>
+
+    <main id="news-results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"></main>
+
+    <div id="loading-indicator" class="text-center py-10 text-gray-500 dark:text-gray-400" style="display: none;">
+        <svg class="animate-spin h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-2"
+            xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+            </path>
+        </svg>
+        Loading news...
+    </div>
+
+    <div id="no-results-message" class="text-center py-10 text-gray-500 dark:text-gray-400" style="display: none;">
+        No articles found matching your criteria.
+    </div>
+
+    <script type="module">
+        import { NewsArticleRenderer } from './news_renderer.js';
+
+        // DOM Elements
+        const resultsContainer = document.getElementById('news-results-container');
+        const queryInput = document.getElementById('query-input');
+        const searchButton = document.getElementById('search-button');
+        const newThreadButton = document.getElementById('new-thread-button'); // New button
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const noResultsMessage = document.getElementById('no-results-message');
+        const scoreControls = document.getElementById('score-controls');
+        const scoreThreshold = document.getElementById('score-threshold');
+        const scoreValue = document.getElementById('score-value');
+        const resultsCounter = document.getElementById('results-counter');
+        const maxScoreLabel = document.getElementById('max-score-label');
+        const resetFilterButton = document.getElementById('reset-filter');
+        const generateModeRadios = document.querySelectorAll('input[name="generateMode"]');
+        const summarySection = document.getElementById('summary-section');
+        const summaryContent = document.getElementById('summary-content');
+        const generatedAnswerSection = document.getElementById('generated-answer-section');
+        const generatedAnswerContent = document.getElementById('generated-answer-content');
+
+        // State variables
+        let allArticles = [];
+        let currentThreshold = 0;
+        let currentGenerateMode = 'list';
+        let conversationHistory = []; // For storing previous user queries
+
+        // Add new DOM elements
+        const conversationHistorySection = document.getElementById('conversation-history-section');
+        const conversationHistoryList = document.getElementById('conversation-history-list');
+
+        const articleRenderer = new NewsArticleRenderer({
+            showAuthor: true,
+            showPublisher: true,
+            showDescription: false
+        });
+
+        // Event Listeners
+        scoreThreshold.addEventListener('input', (e) => {
+            currentThreshold = parseFloat(e.target.value);
+            scoreValue.textContent = currentThreshold.toFixed(2);
+            renderFilteredNews();
+        });
+
+        resetFilterButton.addEventListener('click', () => {
+            scoreThreshold.value = '0';
+            currentThreshold = 0;
+            scoreValue.textContent = '0.00';
+            renderFilteredNews();
+        });
+
+        generateModeRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                currentGenerateMode = e.target.value;
+                console.log("Generate mode changed to:", currentGenerateMode);
+                // Optionally clear results when mode changes, or let it apply on next search
+                // For a cleaner experience, let's clear the specific content sections
+                // but keep the article list if the user wants to switch modes on existing results.
+                summarySection.style.display = 'none';
+                generatedAnswerSection.style.display = 'none';
+                if (currentGenerateMode === 'list') { // Re-render if switching back to list
+                    renderFilteredNews();
+                }
+            });
+        });
+
+        newThreadButton.addEventListener('click', () => {
+            conversationHistory = [];
+            allArticles = [];
+            queryInput.value = ''; // Clear the input field
+            resultsContainer.innerHTML = '';
+            summarySection.style.display = 'none';
+            generatedAnswerSection.style.display = 'none';
+            conversationHistorySection.style.display = 'none';
+            noResultsMessage.style.display = 'none';
+            scoreControls.style.display = 'none';
+            if (resultsCounter) resultsCounter.textContent = '';
+            console.log("New conversation thread started. History cleared.");
+        });
+
+        searchButton.addEventListener('click', handleSearch);
+        queryInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                handleSearch();
+            }
+        });
+
+        function sortArticlesByScore(articles) {
+            if (!Array.isArray(articles)) return [];
+            return articles.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+        }
+
+        function filterArticlesByScore(articles) {
+            if (!Array.isArray(articles)) return [];
+            return articles.filter(article => (Number(article.score) || 0) >= currentThreshold);
+        }
+
+        function renderFilteredNews() {
+            if (allArticles.length === 0 && currentGenerateMode === 'list') {
+                updateResultsCounter(0, 0); // Update counter even if no articles
+                renderNews([]); // Call renderNews to handle no-results message
+                return;
+            }
+
+            let articlesToRender = allArticles;
+            if (currentGenerateMode === 'list' || currentGenerateMode === 'summarize') {
+                articlesToRender = filterArticlesByScore(allArticles);
+                articlesToRender = sortArticlesByScore(articlesToRender);
+            }
+
+            updateResultsCounter(articlesToRender.length, allArticles.length);
+            renderNews(articlesToRender);
+        }
+
+        function updateResultsCounter(filteredCount, totalCount) {
+            if (resultsCounter) {
+                resultsCounter.textContent = `Showing ${filteredCount} of ${totalCount} articles`;
+            }
+        }
+
+        async function fetchNews(query, site = 'all', generateMode = 'list', prevQueries = []) {
+            loadingIndicator.style.display = 'block';
+            noResultsMessage.style.display = 'none';
+            noResultsMessage.classList.remove('irrelevant-query');
+            resultsContainer.innerHTML = '';
+            summarySection.style.display = 'none';
+            generatedAnswerSection.style.display = 'none';
+            scoreControls.style.display = 'none';
+
+            const base = window.NLWEB_HOST || window.location.origin;
+            const apiUrl = new URL('/ask', base);
+            apiUrl.searchParams.append('query', query);
+            apiUrl.searchParams.append('site', site || 'all');
+            apiUrl.searchParams.append('generate_mode', generateMode);
+            apiUrl.searchParams.append('streaming', 'false');
+            apiUrl.searchParams.append('prev', JSON.stringify(prevQueries)); // Send conversation history
+
+            try {
+                const response = await fetch(apiUrl.toString());
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Error fetching news:', response.status, errorText);
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                const data = await response.json();
+
+                if (data.site_is_irrelevant_to_query && data.site_is_irrelevant_to_query.message) {
+                    noResultsMessage.textContent = data.site_is_irrelevant_to_query.message;
+                    noResultsMessage.classList.add('irrelevant-query'); // Apply special styling
+                    noResultsMessage.style.display = 'block';
+                    allArticles = []; // Ensure no articles are processed
+                    loadingIndicator.style.display = 'none';
+                    return []; // Return empty as query is irrelevant
+                }
+
+                let articles = [];
+                summaryContent.textContent = ''; // Clear previous summary
+                generatedAnswerContent.textContent = ''; // Clear previous generated answer
+
+                if (generateMode === 'list') {
+                    articles = data.results || [];
+                } else if (generateMode === 'summarize') {
+                    articles = data.results || [];
+                    if (data.summary && data.summary.message) {
+                        summaryContent.textContent = data.summary.message;
+                        summarySection.style.display = 'block';
+                    }
+                } else if (generateMode === 'generate') {
+                    articles = (data.nlws && data.nlws.items) ? data.nlws.items : [];
+                    if (data.nlws && data.nlws.answer) {
+                        generatedAnswerContent.textContent = data.nlws.answer;
+                        generatedAnswerSection.style.display = 'block';
+                    }
+                }
+
+                allArticles = articles;
+                if ((generateMode === 'list' || generateMode === 'summarize') && articles.length > 0) {
+                    scoreControls.style.display = 'flex';
+                    const scores = articles.map(article => article.score).filter(score => score !== undefined && score !== null);
+                    if (scores.length > 0) {
+                        const maxScore = Math.max(...scores);
+                        const maxValue = Math.max(1, maxScore);
+                        scoreThreshold.max = maxValue.toFixed(2);
+                        if (maxScoreLabel) {
+                            maxScoreLabel.textContent = maxValue.toFixed(2);
+                        }
+                    }
+                    scoreThreshold.value = '0';
+                    currentThreshold = 0;
+                    scoreValue.textContent = '0.00';
+                } else {
+                    scoreControls.style.display = 'none';
+                }
+                return articles;
+            } catch (error) {
+                console.error('Failed to fetch news:', error);
+                resultsContainer.innerHTML = `<p class="text-red-500 text-center col-span-full">Error loading articles. Please try again later.</p>`;
+                return [];
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        function renderNews(articles) {
+            resultsContainer.innerHTML = '';
+
+            if (!articles || articles.length === 0) {
+                // Display no-results message only if it's not already showing an irrelevance message
+                if (noResultsMessage.style.display !== 'block' || !noResultsMessage.classList.contains('irrelevant-query')) {
+                    noResultsMessage.textContent = 'No articles found matching your criteria.';
+                    noResultsMessage.classList.remove('irrelevant-query'); // Ensure default style
+                    noResultsMessage.style.display = 'block';
+                }
+                return;
+            }
+            // If articles are present, ensure the irrelevance class is removed from noResultsMessage
+            noResultsMessage.style.display = 'none';
+            noResultsMessage.classList.remove('irrelevant-query');
+
+            articles.forEach(article => {
+                const itemToRender = {
+                    schema_object: article.schema_object || article,
+                    score: article.score,
+                    description: article.description
+                };
+                try {
+                    const articleElement = articleRenderer.render(itemToRender);
+                    resultsContainer.appendChild(articleElement);
+                } catch (e) {
+                    console.error("Error rendering article:", article, e);
+                    // ... (error rendering specific article)
+                }
+            });
+        }
+
+        function renderConversationHistory() {
+            if (conversationHistory.length === 0) {
+                conversationHistorySection.style.display = 'none';
+                return;
+            }
+
+            conversationHistorySection.style.display = 'block';
+            conversationHistoryList.innerHTML = '';
+
+            conversationHistory.forEach((query, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'flex items-center text-sm text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded border-l-4 border-blue-500';
+                historyItem.innerHTML = `
+                    <span class="font-medium text-blue-600 dark:text-blue-400 mr-2">${index + 1}.</span>
+                    <span class="flex-grow">${escapeHtml(query)}</span>
+                `;
+                conversationHistoryList.appendChild(historyItem);
+            });
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        async function handleSearch() {
+            const query = queryInput.value.trim();
+            const site = "GAIN";
+            if (!query) {
+                // Clear everything if query is empty
+                newThreadButton.click(); // Simulate new thread to clear all states
+                noResultsMessage.textContent = 'Please enter a search term.';
+                noResultsMessage.style.display = 'block';
+                return;
+            }
+
+            const prevQueriesForThisTurn = [...conversationHistory]; // History *before* this query
+            const articles = await fetchNews(query, site, currentGenerateMode, prevQueriesForThisTurn);
+
+            // Add current query to history for the *next* turn
+            conversationHistory.push(query);
+            // Optional: Limit history length
+            if (conversationHistory.length > 10) { // Keep last 10 queries
+                conversationHistory.shift();
+            }
+
+            // Render conversation history
+            renderConversationHistory();
+
+            renderFilteredNews();
+        }
+    </script>
+</body>
+
+</html>

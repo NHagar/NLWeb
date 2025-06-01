@@ -10,17 +10,16 @@ Backwards compatibility is not guaranteed at this time.
 
 from prompts.prompt_runner import PromptRunner
 
-
-# NOTE : RelevanceDetection is turned off as a default, for now. 
+# NOTE : RelevanceDetection is turned off as a default, for now.
 # Turn it on by changing the value of the following variable.
 
-RELEVANCE_DETECTION_ENABLED = False
+RELEVANCE_DETECTION_ENABLED = True
+
 
 class RelevanceDetection(PromptRunner):
-
     RELEVANCE_PROMPT_NAME = "DetectIrrelevantQueryPrompt"
     STEP_NAME = "Relevance"
-    
+
     def __init__(self, handler):
         super().__init__(handler)
         self.handler.state.start_precheck_step(self.STEP_NAME)
@@ -30,17 +29,20 @@ class RelevanceDetection(PromptRunner):
             await self.handler.state.precheck_step_done(self.STEP_NAME)
             return
 
-        if (self.handler.site == 'all' or self.handler.site == 'nlws'):
+        if self.handler.site == "all" or self.handler.site == "nlws":
             await self.handler.state.precheck_step_done(self.STEP_NAME)
             return
         response = await self.run_prompt(self.RELEVANCE_PROMPT_NAME, level="high")
-        if (not response):
+        if not response:
             await self.handler.state.precheck_step_done(self.STEP_NAME)
             return
         self.site_is_irrelevant_to_query = response["site_is_irrelevant_to_query"]
         self.explanation_for_irrelevance = response["explanation_for_irrelevance"]
-        if (self.site_is_irrelevant_to_query == "True"):
-            message = {"message_type": "site_is_irrelevant_to_query", "message": self.explanation_for_irrelevance}
+        if self.site_is_irrelevant_to_query == "True":
+            message = {
+                "message_type": "site_is_irrelevant_to_query",
+                "message": self.explanation_for_irrelevance,
+            }
             self.handler.query_is_irrelevant = True
             self.handler.query_done = True
             self.handler.abort_fast_track_event.set()  # Use event instead of flag
