@@ -423,7 +423,6 @@ static/chat-interface_delish.js
 static/chat-interface_delish.js
 static/delish_chat.html
 code/cp
-/data/db
 data/json/ghrepoinfo-small.json
 code/.env
 app.zip
