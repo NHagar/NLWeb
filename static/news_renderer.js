@@ -83,55 +83,56 @@ export class NewsArticleRenderer {
         }
 
         // --- Score Display (Adjusted for 0-100 integer scores) ---
-        const scoreDiv = document.createElement('div');
-        scoreDiv.className = 'news-article-score flex items-center gap-2 mt-1 mb-2'; // Adjusted margins
+        if (item.score !== undefined && item.score !== null) {
+            const scoreDiv = document.createElement('div');
+            scoreDiv.className = 'news-article-score flex items-center gap-2 mt-1 mb-2'; // Adjusted margins
 
-        const scoreLabel = document.createElement('span');
-        scoreLabel.className = 'text-xs font-medium text-gray-500 dark:text-gray-400';
-        scoreLabel.textContent = 'Relevance:';
+            const scoreLabel = document.createElement('span');
+            scoreLabel.className = 'text-xs font-medium text-gray-500 dark:text-gray-400';
+            scoreLabel.textContent = 'Relevance:';
 
-        const scoreValueSpan = document.createElement('span');
-        const score = item.score;
+            const scoreValueSpan = document.createElement('span');
+            const score = item.score;
 
-        let scoreClass = 'text-xs font-mono px-2 py-1 rounded';
-        // Adjusted color coding for 0-100 scale
-        if (score >= 80) {
-            scoreClass += ' bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
-        } else if (score >= 60) {
-            scoreClass += ' bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
-        } else if (score >= 40) {
-            scoreClass += ' bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200';
-        } else {
-            scoreClass += ' bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+            let scoreClass = 'text-xs font-mono px-2 py-1 rounded';
+            // Adjusted color coding for 0-100 scale
+            if (score >= 80) {
+                scoreClass += ' bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200';
+            } else if (score >= 60) {
+                scoreClass += ' bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200';
+            } else if (score >= 40) {
+                scoreClass += ' bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200';
+            } else {
+                scoreClass += ' bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200';
+            }
+
+            scoreValueSpan.className = scoreClass;
+            scoreValueSpan.textContent = score.toFixed(0); // Display as integer
+
+            const scoreBar = document.createElement('div');
+            scoreBar.className = 'flex-grow h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden max-w-[60px]';
+            const scoreBarFill = document.createElement('div');
+            scoreBarFill.className = 'h-full transition-all duration-300';
+            // Width is score directly as percentage
+            scoreBarFill.style.width = `${Math.max(0, Math.min(100, score))}%`;
+
+            if (score >= 80) {
+                scoreBarFill.className += ' bg-green-500';
+            } else if (score >= 60) {
+                scoreBarFill.className += ' bg-yellow-500';
+            } else if (score >= 40) {
+                scoreBarFill.className += ' bg-orange-500';
+            } else {
+                scoreBarFill.className += ' bg-red-500';
+            }
+
+            scoreBar.appendChild(scoreBarFill);
+
+            scoreDiv.appendChild(scoreLabel);
+            scoreDiv.appendChild(scoreValueSpan);
+            scoreDiv.appendChild(scoreBar);
+            contentDiv.appendChild(scoreDiv);
         }
-
-        scoreValueSpan.className = scoreClass;
-        scoreValueSpan.textContent = score.toFixed(0); // Display as integer
-
-        const scoreBar = document.createElement('div');
-        scoreBar.className = 'flex-grow h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden max-w-[60px]';
-        const scoreBarFill = document.createElement('div');
-        scoreBarFill.className = 'h-full transition-all duration-300';
-        // Width is score directly as percentage
-        scoreBarFill.style.width = `${Math.max(0, Math.min(100, score))}%`;
-
-        if (score >= 80) {
-            scoreBarFill.className += ' bg-green-500';
-        } else if (score >= 60) {
-            scoreBarFill.className += ' bg-yellow-500';
-        } else if (score >= 40) {
-            scoreBarFill.className += ' bg-orange-500';
-        } else {
-            scoreBarFill.className += ' bg-red-500';
-        }
-
-        scoreBar.appendChild(scoreBarFill);
-
-        scoreDiv.appendChild(scoreLabel);
-        scoreDiv.appendChild(scoreValueSpan);
-        scoreDiv.appendChild(scoreBar);
-        contentDiv.appendChild(scoreDiv);
-
 
         const metaDiv = document.createElement('div');
         metaDiv.className = 'news-article-meta text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1';
