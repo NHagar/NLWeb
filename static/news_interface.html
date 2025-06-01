@@ -309,7 +309,8 @@
                 // The `item` structure for the renderer expects `schema_object`
                 const itemToRender = {
                     schema_object: article.schema_object || article,
-                    score: article.score // Pass the score to the renderer
+                    score: article.score, // Pass the score to the renderer
+                    description: article.description
                 };
                 console.log("Rendering article:", itemToRender);
                 console.log("Article score:", itemToRender.score); // Log the score for debugging

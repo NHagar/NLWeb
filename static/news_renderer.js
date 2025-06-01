@@ -49,6 +49,8 @@ export class NewsArticleRenderer {
         const card = document.createElement('article');
         card.className = 'news-article-card bg-white dark:bg-gray-800 shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 ease-in-out w-full flex flex-col';
 
+        const llmDescription = item.description
+
         let imageElementHtml = '';
         if (this.options.showImage && articleData.image) {
             const imageUrl = this.extractImageUrl(articleData.image);
@@ -64,6 +66,7 @@ export class NewsArticleRenderer {
         }
         // Prepend image if it exists, otherwise it won't be added
         if (imageElementHtml) card.innerHTML += imageElementHtml;
+
 
 
         const contentDiv = document.createElement('div');
@@ -129,6 +132,7 @@ export class NewsArticleRenderer {
         scoreDiv.appendChild(scoreBar);
         contentDiv.appendChild(scoreDiv);
 
+
         const metaDiv = document.createElement('div');
         metaDiv.className = 'news-article-meta text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 mb-3 flex flex-wrap items-center gap-x-3 gap-y-1';
 
@@ -164,6 +168,23 @@ export class NewsArticleRenderer {
             }
         }
 
+        if (llmDescription) {
+            const llmDescriptionDiv = document.createElement('div');
+            llmDescriptionDiv.className = 'news-article-llm-description bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-2 flex items-start gap-3';
+
+            // Robot icon (using Unicode robot emoji as fallback, or you can use an SVG)
+            const robotIcon = document.createElement('div');
+            robotIcon.className = 'flex-shrink-0 text-blue-600 dark:text-blue-400 text-lg';
+            robotIcon.innerHTML = '🤖'; // You can replace with an SVG icon if preferred
+
+            const textContent = document.createElement('p');
+            textContent.className = 'text-sm text-blue-800 dark:text-blue-200 italic flex-grow m-0';
+            textContent.textContent = this.stripHtml(this.escapeHtml(llmDescription));
+
+            llmDescriptionDiv.appendChild(robotIcon);
+            llmDescriptionDiv.appendChild(textContent);
+            contentDiv.appendChild(llmDescriptionDiv);
+        }
         // Description wrapper to allow for "Read more" to be pushed to the bottom
         const descriptionWrapper = document.createElement('div');
         descriptionWrapper.className = "flex-grow"; // This will take up available space
