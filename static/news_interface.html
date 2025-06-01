@@ -164,6 +164,19 @@
             background-color: #e1f5fe;
             dark: bg-gray-700;
         }
+
+        #no-results-message.irrelevant-query {
+            color: #ef4444;
+            /* Red color for warning */
+            dark: text-red-400;
+            border-left: 4px solid #ef4444;
+            padding-left: 1rem;
+            background-color: #fee2e2;
+            /* Light red background */
+            dark: bg-red-900;
+            /* Darker red for dark mode */
+            border-radius: 0.25rem;
+        }
     </style>
 </head>
 
@@ -402,6 +415,7 @@
         async function fetchNews(query, site = 'all', generateMode = 'list', prevQueries = []) {
             loadingIndicator.style.display = 'block';
             noResultsMessage.style.display = 'none';
+            noResultsMessage.classList.remove('irrelevant-query');
             resultsContainer.innerHTML = '';
             summarySection.style.display = 'none';
             generatedAnswerSection.style.display = 'none';
@@ -423,6 +437,15 @@
                     throw new Error(`Network response was not ok: ${response.statusText}`);
                 }
                 const data = await response.json();
+
+                if (data.site_is_irrelevant_to_query && data.site_is_irrelevant_to_query.message) {
+                    noResultsMessage.textContent = data.site_is_irrelevant_to_query.message;
+                    noResultsMessage.classList.add('irrelevant-query'); // Apply special styling
+                    noResultsMessage.style.display = 'block';
+                    allArticles = []; // Ensure no articles are processed
+                    loadingIndicator.style.display = 'none';
+                    return []; // Return empty as query is irrelevant
+                }
 
                 let articles = [];
                 summaryContent.textContent = ''; // Clear previous summary
@@ -476,12 +499,17 @@
             resultsContainer.innerHTML = '';
 
             if (!articles || articles.length === 0) {
-                if (currentGenerateMode !== 'generate' || generatedAnswerSection.style.display === 'none') {
+                // Display no-results message only if it's not already showing an irrelevance message
+                if (noResultsMessage.style.display !== 'block' || !noResultsMessage.classList.contains('irrelevant-query')) {
+                    noResultsMessage.textContent = 'No articles found matching your criteria.';
+                    noResultsMessage.classList.remove('irrelevant-query'); // Ensure default style
                     noResultsMessage.style.display = 'block';
                 }
                 return;
             }
+            // If articles are present, ensure the irrelevance class is removed from noResultsMessage
             noResultsMessage.style.display = 'none';
+            noResultsMessage.classList.remove('irrelevant-query');
 
             articles.forEach(article => {
                 const itemToRender = {
