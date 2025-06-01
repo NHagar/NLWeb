@@ -68,7 +68,6 @@
             background: #4b5563;
         }
 
-        /* Tooltip styles */
         .tooltip {
             position: relative;
             display: inline-block;
@@ -85,10 +84,8 @@
             position: absolute;
             z-index: 1;
             bottom: 125%;
-            /* Position the tooltip above the element */
             left: 50%;
             margin-left: -110px;
-            /* Use half of the width to center */
             opacity: 0;
             transition: opacity 0.3s;
         }
@@ -97,7 +94,6 @@
             content: "";
             position: absolute;
             top: 100%;
-            /* Arrow at the bottom */
             left: 50%;
             margin-left: -5px;
             border-width: 5px;
@@ -110,17 +106,14 @@
             opacity: 1;
         }
 
-        /* Styling for the generated content sections */
         #summary-section,
         #generated-answer-section {
             background-color: #e9f5ff;
-            /* Light blue background */
             dark: bg-gray-700;
             padding: 1rem;
             margin-bottom: 1.5rem;
             border-radius: 0.5rem;
             border-left: 4px solid #3b82f6;
-            /* Blue left border */
         }
 
         #summary-section h2,
@@ -128,7 +121,6 @@
             font-size: 1.25rem;
             font-weight: 600;
             color: #1e40af;
-            /* Darker blue for heading */
             dark: text-blue-300;
             margin-bottom: 0.5rem;
         }
@@ -138,8 +130,39 @@
             font-size: 1rem;
             line-height: 1.6;
             color: #374151;
-            /* Dark gray text */
             dark: text-gray-300;
+        }
+
+        #conversation-history-section {
+            display: none;
+            margin-bottom: 1.5rem;
+        }
+
+        #conversation-history-section h3 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: #1e40af;
+            dark: text-blue-300;
+            margin-bottom: 0.75rem;
+        }
+
+        #conversation-history-list {
+            background-color: #f9fafb;
+            dark: bg-gray-800;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            dark: border-gray-700;
+        }
+
+        #conversation-history-list div {
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+
+        #conversation-history-list div:hover {
+            background-color: #e1f5fe;
+            dark: bg-gray-700;
         }
     </style>
 </head>
@@ -158,6 +181,11 @@
             <button id="search-button"
                 class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
                 Search
+            </button>
+            <button id="new-thread-button"
+                class="bg-gray-500 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-opacity-50"
+                title="Start a new conversation, clearing history.">
+                New Thread
             </button>
         </div>
 
@@ -194,9 +222,8 @@
 
         <div id="score-controls" class="flex flex-col sm:flex-row items-start sm:items-center gap-4"
             style="display: none;">
-            <label for="score-threshold" class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                Score threshold:
-            </label>
+            <label for="score-threshold"
+                class="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Score threshold:</label>
             <div class="flex-grow flex items-center gap-3">
                 <span class="text-sm text-gray-500 dark:text-gray-400">0</span>
                 <input type="range" id="score-threshold" min="0" max="1" step="0.01" value="0"
@@ -205,11 +232,24 @@
                 <span id="score-value"
                     class="text-sm font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded min-w-[3rem] text-center">0.00</span>
                 <button id="reset-filter"
-                    class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
-                    Reset
-                </button>
+                    class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">Reset</button>
             </div>
             <div id="results-counter" class="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap"></div>
+        </div>
+    </div>
+
+    <div id="conversation-history-section" class="max-w-3xl mx-auto mb-6" style="display: none;">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
+            <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor"
+                    viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
+                    </path>
+                </svg>
+                Conversation History
+            </h3>
+            <div id="conversation-history-list" class="space-y-2"></div>
         </div>
     </div>
 
@@ -222,8 +262,7 @@
         <p id="generated-answer-content"></p>
     </div>
 
-    <main id="news-results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-    </main>
+    <main id="news-results-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"></main>
 
     <div id="loading-indicator" class="text-center py-10 text-gray-500 dark:text-gray-400" style="display: none;">
         <svg class="animate-spin h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-2"
@@ -243,9 +282,11 @@
     <script type="module">
         import { NewsArticleRenderer } from './news_renderer.js';
 
+        // DOM Elements
         const resultsContainer = document.getElementById('news-results-container');
         const queryInput = document.getElementById('query-input');
         const searchButton = document.getElementById('search-button');
+        const newThreadButton = document.getElementById('new-thread-button'); // New button
         const loadingIndicator = document.getElementById('loading-indicator');
         const noResultsMessage = document.getElementById('no-results-message');
         const scoreControls = document.getElementById('score-controls');
@@ -260,17 +301,22 @@
         const generatedAnswerSection = document.getElementById('generated-answer-section');
         const generatedAnswerContent = document.getElementById('generated-answer-content');
 
-
+        // State variables
         let allArticles = [];
         let currentThreshold = 0;
-        let currentGenerateMode = 'list'; // Default mode
+        let currentGenerateMode = 'list';
+        let conversationHistory = []; // For storing previous user queries
+
+        // Add new DOM elements
+        const conversationHistorySection = document.getElementById('conversation-history-section');
+        const conversationHistoryList = document.getElementById('conversation-history-list');
 
         const articleRenderer = new NewsArticleRenderer({
             showAuthor: true,
-            showPublisher: false,
-            showDescription: false
+            showPublisher: true
         });
 
+        // Event Listeners
         scoreThreshold.addEventListener('input', (e) => {
             currentThreshold = parseFloat(e.target.value);
             scoreValue.textContent = currentThreshold.toFixed(2);
@@ -287,18 +333,43 @@
         generateModeRadios.forEach(radio => {
             radio.addEventListener('change', (e) => {
                 currentGenerateMode = e.target.value;
-                // Optionally, clear results or re-search when mode changes
-                // For now, mode will apply on next search
                 console.log("Generate mode changed to:", currentGenerateMode);
+                // Optionally clear results when mode changes, or let it apply on next search
+                // For a cleaner experience, let's clear the specific content sections
+                // but keep the article list if the user wants to switch modes on existing results.
+                summarySection.style.display = 'none';
+                generatedAnswerSection.style.display = 'none';
+                if (currentGenerateMode === 'list') { // Re-render if switching back to list
+                    renderFilteredNews();
+                }
             });
         });
 
+        newThreadButton.addEventListener('click', () => {
+            conversationHistory = [];
+            allArticles = [];
+            queryInput.value = ''; // Clear the input field
+            resultsContainer.innerHTML = '';
+            summarySection.style.display = 'none';
+            generatedAnswerSection.style.display = 'none';
+            conversationHistorySection.style.display = 'none';
+            noResultsMessage.style.display = 'none';
+            scoreControls.style.display = 'none';
+            if (resultsCounter) resultsCounter.textContent = '';
+            console.log("New conversation thread started. History cleared.");
+        });
+
+        searchButton.addEventListener('click', handleSearch);
+        queryInput.addEventListener('keypress', (event) => {
+            if (event.key === 'Enter') {
+                handleSearch();
+            }
+        });
+
         function sortArticlesByScore(articles) {
-            // Ensure articles is an array and scores are numbers before sorting
             if (!Array.isArray(articles)) return [];
             return articles.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
         }
-
 
         function filterArticlesByScore(articles) {
             if (!Array.isArray(articles)) return [];
@@ -306,11 +377,13 @@
         }
 
         function renderFilteredNews() {
-            if (allArticles.length === 0 && currentGenerateMode === 'list') return; // Only return if no articles AND in list mode.
-            // Other modes might have content even with no articles.
+            if (allArticles.length === 0 && currentGenerateMode === 'list') {
+                updateResultsCounter(0, 0); // Update counter even if no articles
+                renderNews([]); // Call renderNews to handle no-results message
+                return;
+            }
 
             let articlesToRender = allArticles;
-            // Score-based filtering and sorting is most relevant for 'list' and 'summarize' modes
             if (currentGenerateMode === 'list' || currentGenerateMode === 'summarize') {
                 articlesToRender = filterArticlesByScore(allArticles);
                 articlesToRender = sortArticlesByScore(articlesToRender);
@@ -320,29 +393,27 @@
             renderNews(articlesToRender);
         }
 
-
         function updateResultsCounter(filteredCount, totalCount) {
             if (resultsCounter) {
-                const scores = allArticles.map(article => article.score).filter(score => score !== undefined && score !== null);
-                let counterText = `Showing ${filteredCount} of ${totalCount} articles`;
-                resultsCounter.textContent = counterText;
+                resultsCounter.textContent = `Showing ${filteredCount} of ${totalCount} articles`;
             }
         }
 
-        async function fetchNews(query, site = 'all', generateMode = 'list') {
+        async function fetchNews(query, site = 'all', generateMode = 'list', prevQueries = []) {
             loadingIndicator.style.display = 'block';
             noResultsMessage.style.display = 'none';
             resultsContainer.innerHTML = '';
-            summarySection.style.display = 'none'; // Hide summary
-            generatedAnswerSection.style.display = 'none'; // Hide generated answer
+            summarySection.style.display = 'none';
+            generatedAnswerSection.style.display = 'none';
             scoreControls.style.display = 'none';
 
             const base = window.NLWEB_HOST || window.location.origin;
             const apiUrl = new URL('/ask', base);
             apiUrl.searchParams.append('query', query);
             apiUrl.searchParams.append('site', site || 'all');
-            apiUrl.searchParams.append('generate_mode', generateMode); // Use selected mode
+            apiUrl.searchParams.append('generate_mode', generateMode);
             apiUrl.searchParams.append('streaming', 'false');
+            apiUrl.searchParams.append('prev', JSON.stringify(prevQueries)); // Send conversation history
 
             try {
                 const response = await fetch(apiUrl.toString());
@@ -354,6 +425,9 @@
                 const data = await response.json();
 
                 let articles = [];
+                summaryContent.textContent = ''; // Clear previous summary
+                generatedAnswerContent.textContent = ''; // Clear previous generated answer
+
                 if (generateMode === 'list') {
                     articles = data.results || [];
                 } else if (generateMode === 'summarize') {
@@ -363,8 +437,6 @@
                         summarySection.style.display = 'block';
                     }
                 } else if (generateMode === 'generate') {
-                    // For 'generate' mode, the structure is different
-                    // items are inside data.nlws.items, and answer is data.nlws.answer
                     articles = (data.nlws && data.nlws.items) ? data.nlws.items : [];
                     if (data.nlws && data.nlws.answer) {
                         generatedAnswerContent.textContent = data.nlws.answer;
@@ -372,16 +444,14 @@
                     }
                 }
 
-
                 allArticles = articles;
-                // Show score controls only if in 'list' or 'summarize' mode and articles exist
                 if ((generateMode === 'list' || generateMode === 'summarize') && articles.length > 0) {
                     scoreControls.style.display = 'flex';
                     const scores = articles.map(article => article.score).filter(score => score !== undefined && score !== null);
                     if (scores.length > 0) {
                         const maxScore = Math.max(...scores);
-                        const maxValue = Math.max(1, maxScore); // Ensure max is at least 1
-                        scoreThreshold.max = maxValue.toFixed(2); // Set slider max
+                        const maxValue = Math.max(1, maxScore);
+                        scoreThreshold.max = maxValue.toFixed(2);
                         if (maxScoreLabel) {
                             maxScoreLabel.textContent = maxValue.toFixed(2);
                         }
@@ -392,8 +462,7 @@
                 } else {
                     scoreControls.style.display = 'none';
                 }
-
-                return articles; // Return the extracted articles
+                return articles;
             } catch (error) {
                 console.error('Failed to fetch news:', error);
                 resultsContainer.innerHTML = `<p class="text-red-500 text-center col-span-full">Error loading articles. Please try again later.</p>`;
@@ -407,7 +476,6 @@
             resultsContainer.innerHTML = '';
 
             if (!articles || articles.length === 0) {
-                // Only show "no results" if not in generate mode or if generate mode also yielded no answer
                 if (currentGenerateMode !== 'generate' || generatedAnswerSection.style.display === 'none') {
                     noResultsMessage.style.display = 'block';
                 }
@@ -418,51 +486,75 @@
             articles.forEach(article => {
                 const itemToRender = {
                     schema_object: article.schema_object || article,
-                    score: article.score, // Pass the score to the renderer
-                    description: article.description // Pass the LLM's description if available
+                    score: article.score,
+                    description: article.description
                 };
                 try {
                     const articleElement = articleRenderer.render(itemToRender);
                     resultsContainer.appendChild(articleElement);
                 } catch (e) {
                     console.error("Error rendering article:", article, e);
-                    const errorDiv = document.createElement('div');
-                    errorDiv.className = 'p-4 bg-red-100 text-red-700 rounded-md';
-                    errorDiv.textContent = `Error rendering article: ${article.headline || 'Unknown article'}`;
-                    resultsContainer.appendChild(errorDiv);
+                    // ... (error rendering specific article)
                 }
             });
+        }
+
+        function renderConversationHistory() {
+            if (conversationHistory.length === 0) {
+                conversationHistorySection.style.display = 'none';
+                return;
+            }
+
+            conversationHistorySection.style.display = 'block';
+            conversationHistoryList.innerHTML = '';
+
+            conversationHistory.forEach((query, index) => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'flex items-center text-sm text-gray-600 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700 rounded border-l-4 border-blue-500';
+                historyItem.innerHTML = `
+                    <span class="font-medium text-blue-600 dark:text-blue-400 mr-2">${index + 1}.</span>
+                    <span class="flex-grow">${escapeHtml(query)}</span>
+                `;
+                conversationHistoryList.appendChild(historyItem);
+            });
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
         async function handleSearch() {
             const query = queryInput.value.trim();
             const site = "GAIN";
             if (!query) {
-                resultsContainer.innerHTML = '';
+                // Clear everything if query is empty
+                newThreadButton.click(); // Simulate new thread to clear all states
                 noResultsMessage.textContent = 'Please enter a search term.';
                 noResultsMessage.style.display = 'block';
-                scoreControls.style.display = 'none';
-                summarySection.style.display = 'none';
-                generatedAnswerSection.style.display = 'none';
                 return;
             }
-            const articles = await fetchNews(query, site, currentGenerateMode);
 
-            // Initial rendering after fetch (renderFilteredNews will apply threshold if needed)
-            renderFilteredNews(); // This will call renderNews with potentially filtered/sorted articles
-        }
+            const prevQueriesForThisTurn = [...conversationHistory]; // History *before* this query
+            const articles = await fetchNews(query, site, currentGenerateMode, prevQueriesForThisTurn);
 
-        searchButton.addEventListener('click', handleSearch);
-        queryInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter') {
-                handleSearch();
+            // Add current query to history for the *next* turn
+            conversationHistory.push(query);
+            // Optional: Limit history length
+            if (conversationHistory.length > 10) { // Keep last 10 queries
+                conversationHistory.shift();
             }
-        });
 
-        // Initial call to render if there are any default articles (e.g. from URL params)
-        // For now, we assume no initial articles on page load without a search.
+            // Render conversation history
+            renderConversationHistory();
+
+            renderFilteredNews();
+        }
     </script>
-
 </body>
 
 </html>
